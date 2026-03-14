@@ -1,360 +1,311 @@
 import test, { expect } from "@playwright/test";
 import { exec } from "node:child_process";
+import HomePage from "../pom/pages/HomePage";
+import { afterEach } from "node:test";
+import SignUpForm from "../pom/forms/SignUpForm";
+import GaragePage from "../pom/pages/GaragePage";
+import { EXISTING_USER } from "../test-data/users";
+import { signUpValidationMessage } from "../test-data/signUpMessages";
 
-const nameFieldRequiredMessage: string = 'Name is required';
-const nameValidationErrorMessage: string = 'Name has to be from 2 to 20 characters long';
-const nameInvalidMessage: string = 'Name is invalid';
+// const nameFieldRequiredMessage: string = 'Name is required';
+// const nameValidationErrorMessage: string = 'Name has to be from 2 to 20 characters long';
+// const nameInvalidMessage: string = 'Name is invalid';
 
-const lastNameFieldRequiredMessage: string = 'Last name is required';
-const lastNameValidationErrorMessage: string = 'Last name has to be from 2 to 20 characters long';
-const lastNameInvalidMessage: string = 'Last name is invalid';
+// const lastNameFieldRequiredMessage: string = 'Last name is required';
+// const lastNameValidationErrorMessage: string = 'Last name has to be from 2 to 20 characters long';
+// const lastNameInvalidMessage: string = 'Last name is invalid';
 
-const emailFieldRequired: string = 'Email required';
-const emailValidationErrorMessage: string = 'Email is incorrect';
+// const emailFieldRequired: string = 'Email required';
+// const emailValidationErrorMessage: string = 'Email is incorrect';
 
-const passwordFieldRequired: string = 'Password required'
-const passwordValidationErrorMessage: string = 'Password has to be from 8 to 15 characters long and contain at least one integer, one capital, and one small letter';
+// const passwordFieldRequired: string = 'Password required'
+// const passwordValidationErrorMessage: string = 'Password has to be from 8 to 15 characters long and contain at least one integer, one capital, and one small letter';
 
-const reEnterPasswordRequired: string = 'Re-enter password required';
-const reEnterPasswordValidationMessage: string = 'Passwords do not match';
+// const reEnterPasswordRequired: string = 'Re-enter password required';
+// const reEnterPasswordValidationMessage: string = 'Passwords do not match';
 
 
 test.describe('Sign up tests', () => {
+    let homePage: HomePage;
+    let signUpForm: SignUpForm;
+    let garagePage: GaragePage;
     test.beforeEach(async ({ page }) => {
+        homePage = new HomePage(page);
+        signUpForm = new SignUpForm(page);
+        garagePage = new GaragePage(page);
         await page.goto('/');
+        await homePage.signUpButton.click();
+
     })
 
-    test('Succesful registration', async ({ page }) => {
-        await page.getByRole('button', { name: 'Sign up' }).click();
-        await page.locator('#signupName').fill('Name');
-        await page.locator('#signupLastName').fill('Last');
-        await page.locator('#signupEmail').fill(`aqa-mapema6818+${Date.now()}@alibto.com`);
-        await page.locator('#signupPassword').fill('R7mQ2xLp9A');
-        await page.locator('#signupRepeatPassword').fill('R7mQ2xLp9A');
-        await page.getByRole('button', { name: 'Register' }).click();
-        await expect(await page.locator('h1')).toHaveText('Garage');
+    test.describe('Registration', () => {
+        test('Successful registration', async ({ page }) => {
+            await signUpForm.fillRegistrationForm('Name', 'Last', `aqa-mapema6818+${Date.now()}@alibto.com`, 'R7mQ2xLp9A', 'R7mQ2xLp9A');
+            await signUpForm.registerButton.click();
+            await expect(garagePage.mainTitle).toHaveText('Garage');
+        })
+
+        test('Registration with existing user', async ({ page }) => {
+            await signUpForm.fillRegistrationForm('Name', 'Last', EXISTING_USER.email, EXISTING_USER.password, EXISTING_USER.password);
+            await signUpForm.registerButton.click();
+            await expect(signUpForm.alert).toHaveText(signUpValidationMessage.userAlreadyExistMessage);
+        })
     })
 
     test.describe('Open/close the Registration pop-up', () => {
         test('Open the Registration pop-up', async ({ page }) => {
-            await page.getByRole('button', { name: 'Sign up' }).click();
-            await expect(page.locator('div.modal-content')).toBeVisible();
+            await expect(signUpForm.signUpForm).toBeVisible();
         })
 
         test('Close the Registration pop-up by "x" button', async ({ page }) => {
-            await page.getByRole('button', { name: 'Sign up' }).click();
-            await page.getByRole('button', { name: 'Close' }).click();
-            await expect(page.locator('div.modal-content')).not.toBeVisible();
+            await signUpForm.closeButton.click();
+            await expect(signUpForm.signUpForm).not.toBeVisible();
         })
     })
 
     test.describe('Name field validation', () => {
-        test.beforeEach(async ({ page }) => {
-            await page.getByRole('button', { name: 'Sign up' }).click();
-        })
         test('First Name with 2 letters', async ({ page }) => {
-            await page.locator('#signupName').fill('aa');
-            await page.locator('#signupName').blur();
-            await expect(await page.locator('.invalid-feedback')).not.toBeVisible();
+            await signUpForm.enterName('aa');
+            await expect(signUpForm.validationMessageField).not.toBeVisible();
         })
 
         test('First Name with 20 letters', async ({ page }) => {
-            await page.locator('#signupName').fill('qwertyuiolkjhgfdsazx');
-            await page.locator('#signupName').blur();
-            await expect(await page.locator('.invalid-feedback')).not.toBeVisible();
+            await signUpForm.enterName('qwertyuiolkjhgfdsazx');
+            await expect(signUpForm.validationMessageField).not.toBeVisible();
         })
 
         test('First Name field is empty', async ({ page }) => {
-            // Test fails because of incorrect error Message
-            await page.locator('#signupName').fill('');
-            await page.locator('#signupName').blur();
-            await expect(await page.locator('#signupName')).toHaveCSS('border-color', 'rgb(220, 53, 69)');
-            await expect(await page.locator('.invalid-feedback')).toHaveText(nameFieldRequiredMessage);
+            // The test should fail because of the incorrect error message
+            await signUpForm.triggerError(signUpForm.nameField);
+            await expect(signUpForm.nameField).toHaveCSS('border-color', 'rgb(220, 53, 69)');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.nameFieldRequiredMessage);
         })
 
         test('First Name field with one symbol', async ({ page }) => {
-            await page.locator('#signupName').fill('a');
-            await page.locator('#signupName').blur();
-            await expect(await page.locator('#signupName')).toHaveCSS('border-color', 'rgb(220, 53, 69)');
-            await expect(await page.locator('.invalid-feedback')).toHaveText(nameValidationErrorMessage);
+            await signUpForm.enterName('a');
+            await expect(signUpForm.nameField).toHaveCSS('border-color', 'rgb(220, 53, 69)');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.nameValidationErrorMessage);
         })
 
         test('First Name with 21 letters', async ({ page }) => {
-            await page.locator('#signupName').fill('qwertyuiolkjhgfdsazxa');
-            await page.locator('#signupName').blur();
-            await expect(await page.locator('.invalid-feedback')).toHaveText(nameValidationErrorMessage);
+            await signUpForm.enterName('qwertyuiolkjhgfdsazxa');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.nameValidationErrorMessage);
         })
 
         test('First Name with a space', async ({ page }) => {
-            await page.locator('#signupName').fill('qw ea');
-            await page.locator('#signupName').blur();
-            await expect(await page.locator('.invalid-feedback')).toHaveText(nameInvalidMessage);
-            await expect(await page.locator('#signupName')).toHaveCSS('border-color', 'rgb(220, 53, 69)');
+            await signUpForm.enterName('qw ea');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.nameInvalidMessage);
+            await expect(signUpForm.nameField).toHaveCSS('border-color', 'rgb(220, 53, 69)');
         })
 
         test('First Name with special symbols', async ({ page }) => {
-            await page.locator('#signupName').fill('awe$');
-            await page.locator('#signupName').blur();
-            await expect(await page.locator('.invalid-feedback')).toHaveText(nameInvalidMessage);
+            await signUpForm.enterName('awe$');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.nameInvalidMessage);
         })
 
         test('First Name with spaces', async ({ page }) => {
             // Test should fail because the app isn't allow trim the spaces
-            await page.locator('#signupName').fill(' aa ');
-            await page.locator('#signupName').blur();
-            await expect(await page.locator('.invalid-feedback')).not.toBeVisible();
+            await signUpForm.enterName(' aa ');
+            await expect(signUpForm.validationMessageField).not.toBeVisible();
         })
     })
 
     test.describe('Last name validation', () => {
-        test.beforeEach(async ({ page }) => {
-            await page.getByRole('button', { name: 'Sign up' }).click();
-        })
-
         test('Last Name with 2 letters', async ({ page }) => {
-            await page.locator('#signupLastName').fill('aa');
-            await page.locator('#signupLastName').blur();
-            await expect(await page.locator('.invalid-feedback')).not.toBeVisible();
+            await signUpForm.enterLastName('aa');
+            await expect(signUpForm.validationMessageField).not.toBeVisible();
         })
 
         test('Last Name with 20 letters', async ({ page }) => {
-            await page.locator('#signupLastName').fill('qwertyuiolkjhgfdsazx');
-            await page.locator('#signupLastName').blur();
-            await expect(await page.locator('.invalid-feedback')).not.toBeVisible();
+            await signUpForm.enterLastName('qwertyuiolkjhgfdsazx');
+            await expect(signUpForm.validationMessageField).not.toBeVisible();
         })
 
         test('Last Name field is empty', async ({ page }) => {
             // Test fails because the error text is different from requirements
-            await page.locator('#signupLastName').fill('');
-            await page.locator('#signupLastName').blur();
-            await expect(await page.locator('.invalid-feedback')).toHaveText(lastNameFieldRequiredMessage);
+            await signUpForm.triggerError(signUpForm.lastNameField);
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.lastNameFieldRequiredMessage);
         })
 
         test('Last Name field with one symbol', async ({ page }) => {
-            await page.locator('#signupLastName').fill('a');
-            await page.locator('#signupLastName').blur();
-            await expect(await page.locator('#signupLastName')).toHaveCSS('border-color', 'rgb(220, 53, 69)');
-            await expect(await page.locator('.invalid-feedback')).toHaveText(lastNameValidationErrorMessage);
+            await signUpForm.enterLastName('a');
+            await expect(signUpForm.lastNameField).toHaveCSS('border-color', 'rgb(220, 53, 69)');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.lastNameValidationErrorMessage);
         })
 
         test('Last Name with 21 letters', async ({ page }) => {
-            await page.locator('#signupLastName').fill('qwertyuiolkjhgfdsazxa');
-            await page.locator('#signupLastName').blur();
-            await expect(await page.locator('.invalid-feedback')).toHaveText(lastNameValidationErrorMessage);
+            await signUpForm.enterLastName('qwertyuiolkjhgfdsazxa');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.lastNameValidationErrorMessage);
         })
 
         test('Last Name with a space', async ({ page }) => {
-            await page.locator('#signupLastName').fill('qw ea');
-            await page.locator('#signupLastName').blur();
-            await expect(await page.locator('#signupLastName')).toHaveCSS('border-color', 'rgb(220, 53, 69)');
-            await expect(await page.locator('.invalid-feedback')).toHaveText(lastNameInvalidMessage);
+            await signUpForm.enterLastName('qw ea');
+            await expect(signUpForm.lastNameField).toHaveCSS('border-color', 'rgb(220, 53, 69)');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.lastNameInvalidMessage);
         })
 
         test('Last Name with special symbols', async ({ page }) => {
-            await page.locator('#signupLastName').fill('awe$');
-            await page.locator('#signupLastName').blur();
-            await expect(await page.locator('.invalid-feedback')).toHaveText(lastNameInvalidMessage);
+            await signUpForm.enterLastName('awe$');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.lastNameInvalidMessage);
         })
 
         test('First Name with spaces', async ({ page }) => {
             // Test should fail because the app isn't allow trim the spaces
-            await page.locator('#signupLastName').fill(' aa ');
-            await page.locator('#signupLastName').blur();
-            await expect(await page.locator('.invalid-feedback')).not.toBeVisible();;
+            await signUpForm.enterLastName(' awe ');
+            await expect(signUpForm.validationMessageField).not.toBeVisible();;
         })
     })
-
+    // From Email field
     test.describe('Email field validation', () => {
-        test.beforeEach(async ({ page }) => {
-            await page.getByRole('button', { name: 'Sign up' }).click();
-        })
-
         test('Email field is empty', async ({ page }) => {
-            await page.locator('#signupEmail').fill('');
-            await page.locator('#signupEmail').blur();
-            await expect(await page.locator('#signupEmail')).toHaveCSS('border-color', 'rgb(220, 53, 69)');
-            await expect(await page.locator('.invalid-feedback')).toHaveText(emailFieldRequired);
+            await signUpForm.triggerError(signUpForm.emailField);
+            await expect(signUpForm.emailField).toHaveCSS('border-color', 'rgb(220, 53, 69)');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.emailFieldRequired);
         })
 
         test('Email without "@" symbol', async ({ page }) => {
-            await page.locator('#signupEmail').fill('asdf.gmail.com');
-            await page.locator('#signupEmail').blur();
-            await expect(await page.locator('#signupEmail')).toHaveCSS('border-color', 'rgb(220, 53, 69)');
-            await expect(await page.locator('.invalid-feedback')).toHaveText(emailValidationErrorMessage);
+            await signUpForm.enterEmail('"@"');
+            await expect(signUpForm.emailField).toHaveCSS('border-color', 'rgb(220, 53, 69)');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.emailValidationErrorMessage);
         })
 
         test('Email with 2 "@" symbols', async ({ page }) => {
-            await page.locator('#signupEmail').fill('as@d@f.gmail.com');
-            await page.locator('#signupEmail').blur();
-            await expect(await page.locator('.invalid-feedback')).toHaveText(emailValidationErrorMessage);
+            await signUpForm.enterEmail('@');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.emailValidationErrorMessage);
         })
 
         test('Email without "." symbol in domain', async ({ page }) => {
-            await page.locator('#signupEmail').fill('asdf@gmailcom');
-            await page.locator('#signupEmail').blur();
-            await expect(await page.locator('.invalid-feedback')).toHaveText(emailValidationErrorMessage);
+            await signUpForm.enterEmail('asdf@gmailcom');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.emailValidationErrorMessage);
         })
 
         test('Email without text before "@" symbol', async ({ page }) => {
-            await page.locator('#signupEmail').fill('@gmail.com');
-            await page.locator('#signupEmail').blur();
-            await expect(await page.locator('.invalid-feedback')).toHaveText(emailValidationErrorMessage);
+            await signUpForm.enterEmail('@gmail.com');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.emailValidationErrorMessage);
         })
 
         test('Email without letters between "@" and "." symbols', async ({ page }) => {
-            await page.locator('#signupEmail').fill('asdf@.com');
-            await page.locator('#signupEmail').blur();
-            await expect(await page.locator('.invalid-feedback')).toHaveText(emailValidationErrorMessage);
+            await signUpForm.enterEmail('asdf@.com');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.emailValidationErrorMessage);
         })
 
         test('Email with cyrillic symbols', async ({ page }) => {
             // Test fails because it allows to enter email with cyrillic symbols
-            await page.locator('#signupEmail').fill('ййййй@gmail.com');
-            await page.locator('#signupEmail').blur();
-            await expect(await page.locator('.invalid-feedback')).toHaveText(emailValidationErrorMessage);
+            await signUpForm.enterEmail('ййййй@gmail.com');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.emailValidationErrorMessage);
         })
     })
 
     test.describe('Password field validation', () => {
-        test.beforeEach(async ({ page }) => {
-            await page.getByRole('button', { name: 'Sign up' }).click();
-        })
-
         test('Valid password with a length of 8 symbols', async ({ page }) => {
-            await page.locator('#signupPassword').fill('aA123456');
-            await page.locator('#signupPassword').blur();
-            await expect(await page.locator('.invalid-feedback')).not.toBeVisible();
+            await signUpForm.enterPassword('aA123456');
+            await expect(signUpForm.validationMessageField).not.toBeVisible();
         })
 
         test('Valid password with a length of 15 symbols', async ({ page }) => {
-            await page.locator('#signupPassword').fill('aA123456aA12345');
-            await page.locator('#signupPassword').blur();
-            await expect(await page.locator('.invalid-feedback')).not.toBeVisible();
+            await signUpForm.enterPassword('aA123456aA12345');
+            await expect(signUpForm.validationMessageField).not.toBeVisible();
         })
 
         test('Password with 7 letters', async ({ page }) => {
-            await page.locator('#signupPassword').fill('aaaaaaa');
-            await page.locator('#signupPassword').blur();
-            await expect(await page.locator('#signupPassword')).toHaveCSS('border-color', 'rgb(220, 53, 69)');
-            await expect(await page.locator('.invalid-feedback')).toHaveText(passwordValidationErrorMessage);
+            await signUpForm.enterPassword('aaaaaaa');
+            await expect(signUpForm.passwordField).toHaveCSS('border-color', 'rgb(220, 53, 69)');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.passwordValidationErrorMessage);
+
         })
 
         test('Password with 16 letters', async ({ page }) => {
-            await page.locator('#signupPassword').fill('aaaaaaaaaaaaaaaa');
-            await page.locator('#signupPassword').blur();
-            await expect(await page.locator('.invalid-feedback')).toHaveText(passwordValidationErrorMessage);
+            await signUpForm.enterPassword('aaaaaaaaaaaaaaaa');
+            await expect(signUpForm.passwordField).toHaveCSS('border-color', 'rgb(220, 53, 69)');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.passwordValidationErrorMessage);
         })
 
         test('Password with 8 letters without a capital letter and without a digit', async ({ page }) => {
-            await page.locator('#signupPassword').fill('aaaaaaaa');
-            await page.locator('#signupPassword').blur();
-            await expect(await page.locator('.invalid-feedback')).toHaveText(passwordValidationErrorMessage);
+            await signUpForm.enterPassword('aaaaaaaa');
+            await expect(signUpForm.passwordField).toHaveCSS('border-color', 'rgb(220, 53, 69)');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.passwordValidationErrorMessage);
         })
 
         test('Password with 8 letters with a capital letter, but without a digit', async ({ page }) => {
-            await page.locator('#signupPassword').fill('aaaaaaaA');
-            await page.locator('#signupPassword').blur();
-            await expect(await page.locator('.invalid-feedback')).toHaveText(passwordValidationErrorMessage);
+            await signUpForm.enterPassword('aaaaaaaA');
+            await expect(signUpForm.passwordField).toHaveCSS('border-color', 'rgb(220, 53, 69)');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.passwordValidationErrorMessage);
         })
 
         test('Password with 8 letters with a digit, but without a capital letter', async ({ page }) => {
-            await page.locator('#signupPassword').fill('aaaaaaa1');
-            await page.locator('#signupPassword').blur();
-            await expect(await page.locator('.invalid-feedback')).toHaveText(passwordValidationErrorMessage);
+            await signUpForm.enterPassword('aaaaaaa1');
+            await expect(signUpForm.passwordField).toHaveCSS('border-color', 'rgb(220, 53, 69)');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.passwordValidationErrorMessage);
         })
 
         test('Password with 8 letters with all capital letters', async ({ page }) => {
-            await page.locator('#signupPassword').fill('AAAAAAAA');
-            await page.locator('#signupPassword').blur();
-            await expect(await page.locator('.invalid-feedback')).toHaveText(passwordValidationErrorMessage);
+            await signUpForm.enterPassword('AAAAAAAA');
+            await expect(signUpForm.passwordField).toHaveCSS('border-color', 'rgb(220, 53, 69)');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.passwordValidationErrorMessage);
         })
 
         test('Password with 8 letters with all digits', async ({ page }) => {
-            await page.locator('#signupPassword').fill('12345678');
-            await page.locator('#signupPassword').blur();
-            await expect(await page.locator('.invalid-feedback')).toHaveText(passwordValidationErrorMessage);
+            await signUpForm.enterPassword('12345678');
+            await expect(signUpForm.passwordField).toHaveCSS('border-color', 'rgb(220, 53, 69)');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.passwordValidationErrorMessage);
         })
 
         test('Password field is empty', async ({ page }) => {
-            await page.locator('#signupPassword').fill('');
-            await page.locator('#signupPassword').blur();
-            await expect(await page.locator('#signupPassword')).toHaveCSS('border-color', 'rgb(220, 53, 69)');
-            await expect(await page.locator('.invalid-feedback')).toHaveText(passwordFieldRequired);
+            await signUpForm.triggerError(signUpForm.passwordField);
+            await expect(signUpForm.passwordField).toHaveCSS('border-color', 'rgb(220, 53, 69)');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.passwordFieldRequired);
         })
     })
 
     test.describe('Repeat Password field validation', () => {
-        test.beforeEach(async ({ page }) => {
-            await page.getByRole('button', { name: 'Sign up' }).click();
-        })
-
         test('Empty re-enter password field', async ({ page }) => {
-            await page.locator('#signupPassword').fill('A235fgee4');
-            await page.locator('#signupPassword').blur();
-            await page.locator('#signupRepeatPassword').fill('');
-            await page.locator('#signupRepeatPassword').blur();
-            await expect(await page.locator('#signupRepeatPassword')).toHaveCSS('border-color', 'rgb(220, 53, 69)');
-            await expect(await page.locator('.invalid-feedback')).toHaveText(reEnterPasswordRequired);
+            await signUpForm.enterPassword('A235fgee4');
+            await signUpForm.triggerError(signUpForm.repeatPasswordField);
+            await expect(signUpForm.repeatPasswordField).toHaveCSS('border-color', 'rgb(220, 53, 69)');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.repeatPasswordRequired);
         })
 
         test('Mismatch Repeat Password', async ({ page }) => {
-            await page.locator('#signupPassword').fill('A235fgee4');
-            await page.locator('#signupPassword').blur();
-            await page.locator('#signupRepeatPassword').fill('A23fgee4');
-            await page.locator('#signupRepeatPassword').blur();
-            await expect(await page.locator('#signupRepeatPassword')).toHaveCSS('border-color', 'rgb(220, 53, 69)');
-            await expect(await page.locator('.invalid-feedback')).toHaveText(reEnterPasswordValidationMessage);
+            await signUpForm.enterPassword('A235fgee4');
+            await signUpForm.enterRepeatPassword('A23fgee4');
+            await expect(signUpForm.repeatPasswordField).toHaveCSS('border-color', 'rgb(220, 53, 69)');
+            await expect(signUpForm.validationMessageField).toHaveText(signUpValidationMessage.repeatPasswordValidationMessage);
         })
     })
 
     test.describe('Registration button test', () => {
-        test.beforeEach(async ({ page }) => {
-            await page.getByRole('button', { name: 'Sign up' }).click();
-        })
-
         test('The Register button is disabled when incorrect data in the Name field', async ({ page }) => {
-            await page.locator('#signupName').fill('');
-            await page.locator('#signupLastName').fill('Last');
-            await page.locator('#signupEmail').fill(`mapema6818+${Date.now()}@alibto.com`);
-            await page.locator('#signupPassword').fill('R7mQ2xLp9A');
-            await page.locator('#signupRepeatPassword').fill('R7mQ2xLp9A');
-            await expect(page.getByRole('button', { name: 'Register' })).toBeDisabled();
+            await signUpForm.fillRegistrationForm('', 'Last', `mapema6818+${Date.now()}@alibto.com`, 'R7mQ2xLp9A', 'R7mQ2xLp9A');
+            await expect(signUpForm.registerButton).toBeDisabled();
+
         })
 
         test('The register button is disabled when incorrect data in the Last Name field', async ({ page }) => {
-            await page.locator('#signupName').fill('Name');
-            await page.locator('#signupLastName').fill('a');
-            await page.locator('#signupEmail').fill(`mapema6818+${Date.now()}@alibto.com`);
-            await page.locator('#signupPassword').fill('R7mQ2xLp9A');
-            await page.locator('#signupRepeatPassword').fill('R7mQ2xLp9A');
-            await expect(page.getByRole('button', { name: 'Register' })).toBeDisabled();
+            await signUpForm.fillRegistrationForm('Name', 'a', `mapema6818+${Date.now()}@alibto.com`, 'R7mQ2xLp9A', 'R7mQ2xLp9A');
+            await expect(signUpForm.registerButton).toBeDisabled();
         })
 
         test('The register button is disabled when incorrect data in the Email field', async ({ page }) => {
-            await page.locator('#signupName').fill('Name');
-            await page.locator('#signupLastName').fill('Last');
-            await page.locator('#signupEmail').fill(`mapema6818+${Date.now()}@al@ibto.com`);
-            await page.locator('#signupPassword').fill('R7mQ2xLp9A');
-            await page.locator('#signupRepeatPassword').fill('R7mQ2xLp9A');
-            await expect(page.getByRole('button', { name: 'Register' })).toBeDisabled();
+            await signUpForm.fillRegistrationForm('Name', 'Last', `mapema6818+${Date.now()}@al@ibto.com`, 'R7mQ2xLp9A', 'R7mQ2xLp9A');
+            await expect(signUpForm.registerButton).toBeDisabled();
         })
 
         test('The register button is disabled when incorrect data in the Password field', async ({ page }) => {
-            await page.locator('#signupName').fill('Name');
-            await page.locator('#signupLastName').fill('Last');
-            await page.locator('#signupEmail').fill(`mapema6818+${Date.now()}@alibto.com`);
-            await page.locator('#signupPassword').fill('aa');
-            await page.locator('#signupRepeatPassword').fill('R7mQ2xLp9A');
-            await expect(page.getByRole('button', { name: 'Register' })).toBeDisabled();
+            await signUpForm.fillRegistrationForm('Name', 'Last', `mapema6818+${Date.now()}@alibto.com`, 'aa', 'R7mQ2xLp9A');
+            await expect(signUpForm.registerButton).toBeDisabled();
         })
 
         test('The register button is disabled when mismatch data in the Re-enter Password field', async ({ page }) => {
-            await page.locator('#signupName').fill('Name');
-            await page.locator('#signupLastName').fill('Last');
-            await page.locator('#signupEmail').fill(`mapema6818+${Date.now()}@alibto.com`);
-            await page.locator('#signupPassword').fill('R7mQ2xLp9A');
-            await page.locator('#signupRepeatPassword').fill('R7m23Q2xLp9A');
-            await expect(page.getByRole('button', { name: 'Register' })).toBeDisabled();
+            await signUpForm.fillRegistrationForm('Name', 'Last', `mapema6818+${Date.now()}@alibto.com`, 'R7mQ2xLp9A', 'R7m23Q2xLp9A');
+            await expect(signUpForm.registerButton).toBeDisabled();
+        })
+    })
+
+    test.describe('Test', () => {
+        test('test', async ({ page }) => {
+            // await homePage.signUpButton.click();
+            // await page.getByRole('textbox', { name: 'Name' }).fill('Name');
+            await page.getByLabel('Name').fill('Name');
         })
     })
 })

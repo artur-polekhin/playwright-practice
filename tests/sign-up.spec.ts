@@ -7,24 +7,6 @@ import GaragePage from "../pom/pages/GaragePage";
 import { EXISTING_USER } from "../test-data/users";
 import { signUpValidationMessage } from "../test-data/signUpMessages";
 
-// const nameFieldRequiredMessage: string = 'Name is required';
-// const nameValidationErrorMessage: string = 'Name has to be from 2 to 20 characters long';
-// const nameInvalidMessage: string = 'Name is invalid';
-
-// const lastNameFieldRequiredMessage: string = 'Last name is required';
-// const lastNameValidationErrorMessage: string = 'Last name has to be from 2 to 20 characters long';
-// const lastNameInvalidMessage: string = 'Last name is invalid';
-
-// const emailFieldRequired: string = 'Email required';
-// const emailValidationErrorMessage: string = 'Email is incorrect';
-
-// const passwordFieldRequired: string = 'Password required'
-// const passwordValidationErrorMessage: string = 'Password has to be from 8 to 15 characters long and contain at least one integer, one capital, and one small letter';
-
-// const reEnterPasswordRequired: string = 'Re-enter password required';
-// const reEnterPasswordValidationMessage: string = 'Passwords do not match';
-
-
 test.describe('Sign up tests', () => {
     let homePage: HomePage;
     let signUpForm: SignUpForm;
@@ -298,14 +280,6 @@ test.describe('Sign up tests', () => {
         test('The register button is disabled when mismatch data in the Re-enter Password field', async ({ page }) => {
             await signUpForm.fillRegistrationForm('Name', 'Last', `mapema6818+${Date.now()}@alibto.com`, 'R7mQ2xLp9A', 'R7m23Q2xLp9A');
             await expect(signUpForm.registerButton).toBeDisabled();
-        })
-    })
-
-    test.describe('Test', () => {
-        test('test', async ({ page }) => {
-            // await homePage.signUpButton.click();
-            // await page.getByRole('textbox', { name: 'Name' }).fill('Name');
-            await page.getByLabel('Name').fill('Name');
         })
     })
 })

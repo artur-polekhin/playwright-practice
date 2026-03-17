@@ -1,16 +1,21 @@
 import test from "@playwright/test";
 import { afterEach } from "node:test";
+import HomePage from "../pom/pages/HomePage";
+import SignInForm from "../pom/forms/SignInForm";
+import { EXISTING_USER } from "../test-data/users";
 
+let homePage: HomePage;
+let signInForm: SignInForm;
 test.describe('Sign in tests', () => {
     test.beforeEach(async ({ page }) => {
+        homePage = new HomePage(page);
+        signInForm = new SignInForm(page);
         await page.goto('/');
-        await page.getByRole('button', { name: 'Sign In' }).click();;
+        await homePage.signInButton.click();
+
     })
     test('Successful sign in', async ({ page }) => {
-        //mapema6818@alibto.com
-        //R7mQ2xLp9A
-        await page.getByRole('textbox', { name: 'email' }).fill('mapema6818@alibto.com');
-        await page.getByRole('textbox', { name: 'password' }).fill('R7mQ2xLp9A');
-        await page.getByRole('button', { name: 'Login' }).click();
+        await signInForm.fillSingInForm(EXISTING_USER.email, EXISTING_USER.password);
+        await signInForm.signInButton.click();
     })
 })

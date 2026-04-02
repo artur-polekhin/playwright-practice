@@ -5,5 +5,6 @@ export const NEW_USER_1 = {
 
 export const EXISTING_USER = {
     email: 'mapema6818@alibto.com',
-    password: 'R7mQ2xLp9A'
+    password: 'R7mQ2xLp9A',
+    userId: 338299,
 }

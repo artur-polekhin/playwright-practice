@@ -41,9 +41,23 @@ export default defineConfig({
   /* Configure projects for major browsers */
   projects: [
     {
-      name: 'chromium',
+      name: 'setup',
+      testMatch: 'tests/setup/**.setup.ts',
       use: { ...devices['Desktop Chrome'] },
     },
+
+    {
+      name: 'e2e-smoke',
+      testIgnore: 'tests/e2e/**.setup.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
+    },
+
+    {
+      name: 'api-smoke',
+      testMatch: 'tests/api/**.api.ts'
+    }
+
 
     // {
     //   name: 'firefox',

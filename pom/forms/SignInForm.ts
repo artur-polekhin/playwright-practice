@@ -14,7 +14,7 @@ class SignInForm extends BasePage {
         await this.passwordField.fill(password);
     }
 
-    async fillSingInForm(email: string, password: string) {
+    async fillSignInForm(email: string, password: string) {
         await this.enterEmail(email);
         await this.enterPassword(password);
     }
